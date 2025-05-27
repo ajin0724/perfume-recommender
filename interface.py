@@ -4,10 +4,10 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from urllib.parse import urlparse
 
-# ✅ 페이지 설정은 가장 먼저
+# ✅ Must be first
 st.set_page_config(page_title="Perfume Recommender", layout="wide")
 
-# 🔍 이미지 URL 유효성 검사
+# 🔍 Check for valid image URL
 def is_valid_url(url):
     try:
         result = urlparse(url)
@@ -15,24 +15,19 @@ def is_valid_url(url):
     except:
         return False
 
-# 📄 데이터 로드 및 전처리
+# 📄 Load data
 @st.cache_data
 def load_data():
     df = pd.read_csv("perfume_descriptions_with_keywords.csv")
-    df["combined_text"] = (
-        df["keywords"].fillna("") + ", " +
-        df["Character_x"].fillna("") + ", " +
-        df["Fragrance_Family"].fillna("")
-    )
     return df
 
 df = load_data()
 
-# 🖼️ 앱 제목
+# 🖼️ Title
 st.title("🌸 Perfume Recommender")
 st.write("Find a fragrance that suits your mood, style, and personality.")
 
-# 🎛️ 사용자 입력
+# 🎛️ Sidebar: user input
 st.sidebar.header("Your Preferences")
 
 moods = st.sidebar.multiselect(
@@ -60,22 +55,24 @@ character_pref = st.sidebar.multiselect(
     ["Romantic", "Elegant", "Mysterious", "Fresh", "Casual", "Chic", "Sexy", "Natural", "Classic"]
 )
 
-# ▶️ 추천 실행
+# ▶️ Recommend button
 if st.sidebar.button("Recommend Perfumes"):
     input_keywords = moods + tones + personality + character_pref
     if gender != "Doesn't matter":
         input_keywords.append("man" if gender == "Male" else "woman")
     input_text = ", ".join(input_keywords)
 
+    # 🔍 TF-IDF using only keywords
     vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(df["combined_text"].astype(str))
+    tfidf_matrix = vectorizer.fit_transform(df["keywords"].fillna("").astype(str))
     user_vec = vectorizer.transform([input_text])
     similarities = cosine_similarity(user_vec, tfidf_matrix).flatten()
 
     top_indices = similarities.argsort()[-5:][::-1]
     top_perfumes = df.iloc[top_indices]
 
-    st.subheader("🎯 Recommended Fragrances for You")
+    # 🎯 Display results
+    st.subheader("Recommended Fragrances for You")
 
     for _, row in top_perfumes.iterrows():
         with st.container():
@@ -89,8 +86,6 @@ if st.sidebar.button("Recommend Perfumes"):
             with cols[1]:
                 perfume_name = row.get("Name", "Unnamed Perfume")
                 brand = row.get("Brand", "N/A")
-
-                # 향수 이름과 브랜드를 함께 보여주기
                 st.markdown(
                     f"### {perfume_name} <span style='font-size: 14px; color: gray;'>({brand})</span>",
                     unsafe_allow_html=True
@@ -98,7 +93,6 @@ if st.sidebar.button("Recommend Perfumes"):
 
                 st.write(row.get("Description", "No description available."))
 
-                # 세부 정보
                 st.markdown("**Notes:**")
                 st.markdown(f"- **Top**: {row.get('Top_note', 'N/A')}")
                 st.markdown(f"- **Middle**: {row.get('Middle_note', 'N/A')}")
