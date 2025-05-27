@@ -99,9 +99,6 @@ if st.sidebar.button("Recommend Perfumes"):
                 st.write(row.get("Description", "No description available."))
 
                 # 세부 정보
-                st.markdown(f"**Character**: {row.get('Character_x', 'N/A')}")
-                st.markdown(f"**Family**: {row.get('Fragrance_Family', 'N/A')}")
-
                 st.markdown("**Notes:**")
                 st.markdown(f"- **Top**: {row.get('Top_note', 'N/A')}")
                 st.markdown(f"- **Middle**: {row.get('Middle_note', 'N/A')}")
