@@ -3,11 +3,13 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Load data
+# ✅ This must be the first Streamlit command
+st.set_page_config(page_title="Perfume Recommender", layout="wide")
+
+# Load and prepare data
 @st.cache_data
 def load_data():
     df = pd.read_csv("perfume_descriptions_with_keywords.csv")
-    # Create combined text field for TF-IDF
     df["combined_text"] = (
         df["keywords"].fillna("") + ", " +
         df["Character_x"].fillna("") + ", " +
@@ -17,11 +19,11 @@ def load_data():
 
 df = load_data()
 
-st.set_page_config(page_title="Perfume Recommender", layout="wide")
+# Page title
 st.title("🌸 Perfume Recommender")
 st.write("Find a fragrance that suits your mood, style, and personality.")
 
-# Sidebar input
+# Sidebar user inputs
 st.sidebar.header("Your Preferences")
 
 moods = st.sidebar.multiselect(
@@ -49,24 +51,25 @@ character_pref = st.sidebar.multiselect(
     ["Romantic", "Elegant", "Mysterious", "Fresh", "Casual", "Chic", "Sexy", "Natural", "Classic"]
 )
 
-# Trigger recommendation
+# Recommend button
 if st.sidebar.button("Recommend Perfumes"):
-    # Combine all selected preferences into input text
+    # Combine all user inputs
     input_keywords = moods + tones + personality + character_pref
     if gender != "Doesn't matter":
         input_keywords.append("man" if gender == "Male" else "woman")
     input_text = ", ".join(input_keywords)
 
-    # TF-IDF on combined text
+    # TF-IDF similarity matching
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform(df["combined_text"].astype(str))
     user_vec = vectorizer.transform([input_text])
     similarities = cosine_similarity(user_vec, tfidf_matrix).flatten()
 
-    # Get top 5 matches
+    # Get top 5 perfume matches
     top_indices = similarities.argsort()[-5:][::-1]
     top_perfumes = df.iloc[top_indices]
 
+    # Show results
     st.subheader("🎯 Recommended Fragrances for You")
     for _, row in top_perfumes.iterrows():
         with st.container():
