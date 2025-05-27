@@ -4,59 +4,80 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 # Load data
-df = pd.read_csv("perfume_descriptions_with_keywords.csv")
+@st.cache_data
+def load_data():
+    df = pd.read_csv("perfume_descriptions_with_keywords.csv")
+    # Create combined text field for TF-IDF
+    df["combined_text"] = (
+        df["keywords"].fillna("") + ", " +
+        df["Character_x"].fillna("") + ", " +
+        df["Fragrance_Family"].fillna("")
+    )
+    return df
 
-# Page title
-st.title("Perfume Recommendation System")
+df = load_data()
 
-# User input section
-st.header("Tell us about your preferences!")
+st.set_page_config(page_title="Perfume Recommender", layout="wide")
+st.title("🌸 Perfume Recommender")
+st.write("Find a fragrance that suits your mood, style, and personality.")
 
-# Question 1: Mood
-moods = st.multiselect(
-    "What moods or feelings do you prefer in a fragrance?",
+# Sidebar input
+st.sidebar.header("Your Preferences")
+
+moods = st.sidebar.multiselect(
+    "Preferred moods or feelings in a fragrance",
     ["romantic", "cozy", "bold", "fresh", "gentle", "strong", "soft", "mysterious"]
 )
 
-# Question 2: Scent family
-tones = st.multiselect(
-    "Which scent families do you like?",
-    ["woody", "floral", "oriental", "fresh", "citrus", "spicy", "sweet", "green"]
+tones = st.sidebar.multiselect(
+    "Favorite scent families",
+    ["Floral", "Woody", "Oriental", "Aromatic", "Fruity", "Citrus", "Spicy", "Green", "Powdery"]
 )
 
-# Question 3: Gender preference
-gender = st.radio(
-    "Would you like recommendations based on gender?",
+gender = st.sidebar.radio(
+    "Do you prefer gender-based recommendations?",
     ["Doesn't matter", "Male", "Female"]
 )
 
-# Question 4: Personality
-personality = st.multiselect(
-    "Which words best describe your personality?",
+personality = st.sidebar.multiselect(
+    "Which words describe your personality?",
     ["energetic", "calm", "confident", "delicate", "unique", "heroic", "dreamy"]
 )
 
-# Recommend button
-if st.button("Get Recommendations"):
-    # Combine user inputs into a single keyword string
-    input_keywords = moods + tones + personality
+character_pref = st.sidebar.multiselect(
+    "What kind of character or impression should the perfume express?",
+    ["Romantic", "Elegant", "Mysterious", "Fresh", "Casual", "Chic", "Sexy", "Natural", "Classic"]
+)
+
+# Trigger recommendation
+if st.sidebar.button("Recommend Perfumes"):
+    # Combine all selected preferences into input text
+    input_keywords = moods + tones + personality + character_pref
     if gender != "Doesn't matter":
         input_keywords.append("man" if gender == "Male" else "woman")
     input_text = ", ".join(input_keywords)
 
-    # Compute TF-IDF similarity
+    # TF-IDF on combined text
     vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform(df["keywords"])
+    tfidf_matrix = vectorizer.fit_transform(df["combined_text"].astype(str))
     user_vec = vectorizer.transform([input_text])
     similarities = cosine_similarity(user_vec, tfidf_matrix).flatten()
 
     # Get top 5 matches
     top_indices = similarities.argsort()[-5:][::-1]
-    top_perfumes = df.iloc[top_indices][["Name", "Description", "keywords"]]
+    top_perfumes = df.iloc[top_indices]
 
-    # Display results
-    st.subheader("🎯 Recommended Perfumes")
+    st.subheader("🎯 Recommended Fragrances for You")
     for _, row in top_perfumes.iterrows():
-        st.markdown(f"**{row['Name']}**")
-        st.write(row["Description"])
-        st.caption(f"Keywords: {row['keywords']}")
+        with st.container():
+            cols = st.columns([1, 2])
+            with cols[0]:
+                if pd.notna(row.get("image", None)):
+                    st.image(row["image"], use_column_width=True)
+                else:
+                    st.markdown("_No image available_")
+            with cols[1]:
+                st.markdown(f"### {row.get('perfume_name', 'Unnamed Perfume')}")
+                st.write(row.get("definition", "No description available."))
+                st.caption(f"Character: {row.get('Character_x', 'N/A')} | Family: {row.get('Fragrance_Family', 'N/A')}")
+        st.markdown("---")
